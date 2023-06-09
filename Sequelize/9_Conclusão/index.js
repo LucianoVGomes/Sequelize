@@ -6,6 +6,7 @@ const app = express()
 const conn = require('./db/conn')
 
 const User = require('./models/User')
+const Address = require('./models/Address')
 
 app.engine('handlebars', exphbs())
 app.set('view engine', 'handlebars')
@@ -81,14 +82,13 @@ app.get('/users/edit/:id', function (req, res) {
   const id = req.params.id
 
   User.findOne({
-    raw: true,
+    include: Address,
     where: {
       id: id,
     },
   })
     .then((user) => {
-      console.log(user)
-      res.render('useredit', { user })
+      res.render('useredit', { user: user.get({ plain: true }) })
     })
     .catch((err) => console.log(err))
 })
@@ -115,7 +115,7 @@ app.post('/users/update', function (req, res) {
   console.log(req.body)
   console.log(userData)
 
-   User.update(userData, {
+  User.update(userData, {
     where: {
       id: id,
     },
@@ -127,9 +127,38 @@ app.post('/users/update', function (req, res) {
     .catch((err) => console.log(err))
 })
 
+app.post('/address/create', function (req, res) {
+  const UserId = req.body.UserId
+  const street = req.body.street
+  const number = req.body.number
+  const city = req.body.city
+
+  const address = {
+    street,
+    number,
+    city,
+    UserId,
+  }
+
+  Address.create(address)
+    .then(res.redirect(`/users/edit/${UserId}`))
+    .catch((err) => console.log(err))
+})
+
+app.post('/address/delete/', function (req, res) {
+  const id = req.body.id
+
+  Address.destroy({
+    where: {
+      id: id,
+    },
+  })
+    .then(res.redirect('/'))
+    .catch((err) => console.log(err))
+})
+
 // Criar tabelas e rodar o app
 conn
-  // .sync({force : true})
   .sync()
   .then(() => {
     app.listen(3000)
